@@ -1,9 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from app.main import app
 from mockfirestore import MockFirestore
 from app.api.routes.payments import get_db
+from firebase_admin import firestore
+import mockfirestore.document
+import datetime
 
 client = TestClient(app)
 
@@ -18,8 +21,7 @@ class DummyTransaction:
     def get(self, ref):
         return ref.get()
 
-from firebase_admin import firestore
-import mockfirestore.document
+
 
 def fake_transactional(func):
     def wrapper(transaction, *args, **kwargs):
@@ -33,7 +35,7 @@ def fake_doc_get(self, *args, **kwargs):
     return original_doc_get(self, *args, **kwargs)
 mockfirestore.document.DocumentReference.get = fake_doc_get
 
-import datetime
+
 
 @pytest.fixture
 def mock_db():

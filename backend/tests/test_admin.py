@@ -5,7 +5,9 @@ from app.main import app
 from mockfirestore import MockFirestore
 from app.api.routes.admin import get_db
 from app.api.deps import UserRecord, require_admin
-
+from firebase_admin import firestore
+import mockfirestore.document
+import datetime
 client = TestClient(app)
 
 # Inject dummy methods for MockFirestore to simulate transactions
@@ -20,8 +22,6 @@ class DummyTransaction:
         return ref.get()
 
 # We need to monkeypath the firestore transactional decorator
-from firebase_admin import firestore
-import mockfirestore.document
 
 def fake_transactional(func):
     def wrapper(transaction, *args, **kwargs):
@@ -35,7 +35,7 @@ def fake_doc_get(self, *args, **kwargs):
     return original_doc_get(self, *args, **kwargs)
 mockfirestore.document.DocumentReference.get = fake_doc_get
 
-import datetime
+
 
 @pytest.fixture
 def mock_db():
