@@ -21,11 +21,16 @@ class Settings(BaseSettings):
     
     @property
     def get_allowed_origins(self) -> list[str]:
-        try:
-            return json.loads(self.ALLOWED_ORIGINS)
-        except json.JSONDecodeError:
-            return []
-            
+        # Provide a robust parser for environments that strip or inject unexpected quotes
+        cleaned = self.ALLOWED_ORIGINS.strip().strip("'").strip('"')
+        if cleaned.startswith("["):
+            try:
+                import json
+                return json.loads(cleaned.replace("'", '"'))
+            except Exception:
+                pass
+        # Fallback to comma separation
+        return [x.strip() for x in cleaned.split(",")] if cleaned else []
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
