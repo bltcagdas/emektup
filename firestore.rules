@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==========================================
+    // DEFAULT POLICY: DENY ALL
+    // ==========================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ==========================================
+    // WHITELIST ROUTING
+    // ==========================================
+
+    // 1. ORDER_PUBLIC: Guests and Users can only read this to check their tracking status. No direct writes from frontend.
+    match /order_public/{tracking_code} {
+      allow read: if true; 
+      // Write is exclusively handled by Backend write fan-out!
+    }
+
+    // 2. USERS: Authenticated users can read/write their OWN documents only.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ==========================================
+    // BACKEND-ONLY COLLECTIONS (NO FRONTEND ACCESS)
+    // ==========================================
+    
+    // orders -> Backend only
+    match /orders/{document=**} {
+      allow read, write: if false; 
+    }
+
+    // payments -> Backend only
+    match /payments/{document=**} {
+      allow read, write: if false; 
+    }
+
+    // shipments -> Backend only
+    match /shipments/{document=**} {
+      allow read, write: if false; 
+    }
+
+    // order_status_history -> Backend only
+    match /order_status_history/{document=**} {
+      allow read, write: if false; 
+    }
+
+    // admin_audit_logs -> Backend only
+    match /admin_audit_logs/{document=**} {
+      allow read, write: if false; 
+    }
+  }
+}

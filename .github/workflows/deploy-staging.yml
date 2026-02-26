@@ -46,6 +46,21 @@ jobs:
           cd backend
           pytest tests/ -v
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Firebase Rules Test Env
+        run: |
+          cd rules-tests
+          npm install
+
+      - name: Run Firebase Security Rules Tests (Emulator)
+        run: |
+          cd rules-tests
+          npm run test:emulator
+
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
@@ -56,6 +71,11 @@ jobs:
           service_account: cloudrun-deployer@emektup-staging.iam.gserviceaccount.com
           token_format: 'access_token'
 
+      - name: Deploy Firebase Security Rules
+        run: |
+          cd rules-tests
+          npx firebase deploy --only firestore:rules --project emektup-staging
+          
       - name: Docker Auth
         id: docker-auth
         uses: 'docker/login-action@v3'
