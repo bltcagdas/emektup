@@ -35,7 +35,7 @@ export default function PaymentReturn() {
             if (query.state.data?.status === "PAID" || query.state.data?.status === "FAILED") {
                 return false;
             }
-            return 2000; // Poll every 2s
+            return 4000; // Poll every 4s to prevent 429 Too Many Requests
         },
         staleTime: 0 // Always fetch fresh
     });

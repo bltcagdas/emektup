@@ -216,7 +216,7 @@ def payment_webhook(
 
 
 @router.get("/status", response_model=PaymentStatusResponse)
-@limiter.limit("30/minute")
+@limiter.limit("60/minute")
 def get_payment_status(request: Request, order_id: str):
     """
     Called by Frontend to poll the status of a specific order's payment.
