@@ -40,7 +40,7 @@ class PaymentService:
             'name': recipient_name.split()[0], # simplistic split
             'surname': " ".join(recipient_name.split()[1:]) or "Soyadi",
             'gsmNumber': "+905555555555",
-            'email': "kullanici@emektup.local",
+            'email': "kullanici@emektup.com",
             'identityNumber': "74300864791",
             'lastLoginDate': "2026-02-26 12:00:00",
             'registrationDate': "2026-02-26 12:00:00",
