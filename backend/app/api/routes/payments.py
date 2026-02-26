@@ -120,6 +120,7 @@ def payment_webhook(
         
         @firestore.transactional
         def process_webhook(transaction, payment_ref):
+            # 1) ALL READS FIRST
             snapshot = payment_ref.get(transaction=transaction)
             if not snapshot.exists:
                 # We don't fail a webhook 500 if token doesn't exist, just 200 OK so they stop retrying
@@ -132,10 +133,15 @@ def payment_webhook(
                 # Already processed (Double delivery from Provider) -> No-op
                 return 
                 
+            order_ref = db.collection(ORDERS).document(order_id)
+            order_doc = order_ref.get(transaction=transaction)
+                
+            # 2) COMPUTE STATE
             # Map provider status to internal status
             internal_status = "SUCCEEDED" if provider_status.upper() == "SUCCESS" else "FAILED"
             timestamp = firestore.SERVER_TIMESTAMP
             
+            # 3) ALL WRITES LAST
             # a) UPDATE PAYMENTS
             transaction.update(payment_ref, {
                 "status": internal_status,
@@ -145,14 +151,10 @@ def payment_webhook(
             
             # If FAILED, just update payment doc and we stop here
             if internal_status == "FAILED":
-                order_ref = db.collection(ORDERS).document(order_id)
                 transaction.update(order_ref, {"payment_status": "FAILED"})
                 return
                 
             # SUCCESS LOGIC follows:
-            order_ref = db.collection(ORDERS).document(order_id)
-            order_doc = order_ref.get(transaction=transaction)
-            
             if order_doc.exists:
                 order_data = order_doc.to_dict()
                 tracking_code = order_data.get("tracking_code")
