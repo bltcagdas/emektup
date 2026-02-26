@@ -93,119 +93,124 @@ def create_payment_intent(request: Request, payload: PaymentCreateIntentRequest)
 def payment_webhook(
     request: Request, 
     payload: PaymentWebhookPayload,
+    bg_tasks: BackgroundTasks,
     x_iyz_signature: str = Header(None) # Iyzico signature header
 ):
-    # 1. Signature Verification Requirement
-    if not x_iyz_signature:
-        raise HTTPException(status_code=401, detail="Missing signature header")
-        
-    # We pass the raw string payload body ideally, but here we simplify for the wrapper
-    is_valid = payment_service.verify_webhook_signature("raw_body_mock", x_iyz_signature)
-    
-    if not is_valid:
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
-        
-    db = get_db()
-    
-    # 2. Extract Data from Payload
-    token = payload.token
-    provider_status = payload.status # e.g. "SUCCESS"
-    order_id = payload.conversationId
-    
-    # 3. Transactional Write Fan-out with DEDUP
-    transaction = db.transaction()
-    payment_ref = db.collection(PAYMENTS).document(token)
-    
-    @firestore.transactional
-    def process_webhook(transaction, payment_ref):
-        snapshot = payment_ref.get(transaction=transaction)
-        if not snapshot.exists:
-            # We don't fail a webhook 500 if token doesn't exist, just 200 OK so they stop retrying
-            return
+    try:
+        # 1. Signature Verification Requirement
+        if not x_iyz_signature:
+            raise HTTPException(status_code=401, detail="Missing signature header")
             
-        data = snapshot.to_dict()
+        # We pass the raw string payload body ideally, but here we simplify for the wrapper
+        is_valid = payment_service.verify_webhook_signature("raw_body_mock", x_iyz_signature)
         
-        # Dedup Check: Is this event already processed?
-        if data.get("status") in ["SUCCEEDED", "FAILED"]:
-            # Already processed (Double delivery from Provider) -> No-op
-            return 
+        if not is_valid:
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
             
-        # Map provider status to internal status
-        internal_status = "SUCCEEDED" if provider_status.upper() == "SUCCESS" else "FAILED"
-        timestamp = firestore.SERVER_TIMESTAMP
+        db = get_db()
         
-        # a) UPDATE PAYMENTS
-        transaction.update(payment_ref, {
-            "status": internal_status,
-            "updated_at": timestamp,
-            "provider_payment_id": payload.paymentId
-        })
+        # 2. Extract Data from Payload
+        token = payload.token
+        provider_status = payload.status # e.g. "SUCCESS"
+        order_id = payload.conversationId
         
-        # If FAILED, just update payment doc and we stop here
-        if internal_status == "FAILED":
+        # 3. Transactional Write Fan-out with DEDUP
+        transaction = db.transaction()
+        payment_ref = db.collection(PAYMENTS).document(token)
+        
+        @firestore.transactional
+        def process_webhook(transaction, payment_ref):
+            snapshot = payment_ref.get(transaction=transaction)
+            if not snapshot.exists:
+                # We don't fail a webhook 500 if token doesn't exist, just 200 OK so they stop retrying
+                return
+                
+            data = snapshot.to_dict()
+            
+            # Dedup Check: Is this event already processed?
+            if data.get("status") in ["SUCCEEDED", "FAILED"]:
+                # Already processed (Double delivery from Provider) -> No-op
+                return 
+                
+            # Map provider status to internal status
+            internal_status = "SUCCEEDED" if provider_status.upper() == "SUCCESS" else "FAILED"
+            timestamp = firestore.SERVER_TIMESTAMP
+            
+            # a) UPDATE PAYMENTS
+            transaction.update(payment_ref, {
+                "status": internal_status,
+                "updated_at": timestamp,
+                "provider_payment_id": payload.paymentId
+            })
+            
+            # If FAILED, just update payment doc and we stop here
+            if internal_status == "FAILED":
+                order_ref = db.collection(ORDERS).document(order_id)
+                transaction.update(order_ref, {"payment_status": "FAILED"})
+                return
+                
+            # SUCCESS LOGIC follows:
             order_ref = db.collection(ORDERS).document(order_id)
-            transaction.update(order_ref, {"payment_status": "FAILED"})
-            return
+            order_doc = order_ref.get(transaction=transaction)
             
-        # SUCCESS LOGIC follows:
-        order_ref = db.collection(ORDERS).document(order_id)
-        order_doc = order_ref.get(transaction=transaction)
-        
-        if order_doc.exists:
-            order_data = order_doc.to_dict()
-            tracking_code = order_data.get("tracking_code")
-            
-            # b) UPDATE ORDERS
-            transaction.update(order_ref, {
-                "payment_status": "PAID",
-                "status": OrderStatus.PAID,
-                "paid_at": timestamp,
-                "status_updated_at": timestamp,
-                "status_updated_by": "system_webhook"
-            })
-            
-            # c) UPDATE ORDER_PUBLIC (NO PII)
-            public_ref = db.collection(ORDER_PUBLIC).document(tracking_code)
-            transaction.update(public_ref, {
-                "status": OrderStatus.PAID,
-                "status_updated_at": timestamp,
-                "public_step_label": get_public_step_label(OrderStatus.PAID)
-            })
-            
-            # d) UPDATE HISTORY + AUDIT 
-            history_ref = db.collection(ORDER_STATUS_HISTORY).document()
-            transaction.set(history_ref, {
-                "order_id": order_id,
-                "from_status": order_data.get("status"),
-                "to_status": OrderStatus.PAID,
-                "actor": "system",
-                "source": "webhook",
-                "timestamp": timestamp
-            })
-            
-            audit_ref = db.collection(ADMIN_AUDIT_LOGS).document()
-            transaction.set(audit_ref, {
-                "action": "PAYMENT_RECEIVED",
-                "order_id": order_id,
-                "actor": "system",
-                "timestamp": timestamp
-            })
+            if order_doc.exists:
+                order_data = order_doc.to_dict()
+                tracking_code = order_data.get("tracking_code")
+                
+                # b) UPDATE ORDERS
+                transaction.update(order_ref, {
+                    "payment_status": "PAID",
+                    "status": OrderStatus.PAID,
+                    "paid_at": timestamp,
+                    "status_updated_at": timestamp,
+                    "status_updated_by": "system_webhook"
+                })
+                
+                # c) UPDATE ORDER_PUBLIC (NO PII)
+                public_ref = db.collection(ORDER_PUBLIC).document(tracking_code)
+                transaction.update(public_ref, {
+                    "status": OrderStatus.PAID,
+                    "status_updated_at": timestamp,
+                    "public_step_label": get_public_step_label(OrderStatus.PAID)
+                })
+                
+                # d) UPDATE HISTORY + AUDIT 
+                history_ref = db.collection(ORDER_STATUS_HISTORY).document()
+                transaction.set(history_ref, {
+                    "order_id": order_id,
+                    "from_status": order_data.get("status"),
+                    "to_status": OrderStatus.PAID,
+                    "actor": "system",
+                    "source": "webhook",
+                    "timestamp": timestamp
+                })
+                
+                audit_ref = db.collection(ADMIN_AUDIT_LOGS).document()
+                transaction.set(audit_ref, {
+                    "action": "PAYMENT_RECEIVED",
+                    "order_id": order_id,
+                    "actor": "system",
+                    "timestamp": timestamp
+                })
 
-    process_webhook(transaction, payment_ref)
-    
-    # 4. Enqueue background job (Fire and Forget)
-    if provider_status.upper() == "SUCCESS":
-       try:
-           # Get the tracking code from order (we need outside transaction to be safe or fetch again)
-           order_doc_raw = db.collection(ORDERS).document(order_id).get()
-           if order_doc_raw.exists:
-               tracking = order_doc_raw.to_dict().get("tracking_code")
-               payment_service.enqueue_pdf_generation_task(order_id=order_id, tracking_code=tracking)
-       except Exception as e:
-           # Do not fail the webhook just because the enqueue failed
-           from app.core.logging import logger
-           logger.error(f"Post-webhook task enqueue failed: {str(e)}")
-    return {"message": "Webhook processed successfully"}
+        process_webhook(transaction, payment_ref)
+        
+        # 4. Enqueue background job (Fire and Forget)
+        if provider_status.upper() == "SUCCESS":
+           try:
+               # Get the tracking code from order (we need outside transaction to be safe or fetch again)
+               order_doc_raw = db.collection(ORDERS).document(order_id).get()
+               if order_doc_raw.exists:
+                   tracking = order_doc_raw.to_dict().get("tracking_code")
+                   bg_tasks.add_task(payment_service.enqueue_pdf_generation_task, order_id=order_id, tracking_code=tracking)
+           except Exception as e:
+               pass
+        return {"message": "Webhook processed successfully"}
+    except HTTPException:
+        raise
+    except Exception:
+        import traceback
+        raise HTTPException(status_code=400, detail=traceback.format_exc())
 
 
 @router.get("/status", response_model=PaymentStatusResponse)
