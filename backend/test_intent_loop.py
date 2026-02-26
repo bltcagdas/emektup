@@ -10,7 +10,7 @@ def poll():
     print("Waiting for deployment... (expecting 400 or 200)", flush=True)
     while True:
         try:
-            r = httpx.post(URL, json=PAYLOAD, headers=HEADERS, timeout=10.0)
+            r = httpx.post(URL, json=PAYLOAD, headers=HEADERS, timeout=12.0)
             if r.status_code != 500:
                 print(f"\nDEPLOYED! Status: {r.status_code}")
                 print(f"Body: {r.text}")
