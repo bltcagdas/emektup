@@ -78,8 +78,14 @@ def create_payment_intent(request: Request, payload: PaymentCreateIntentRequest)
         
         return intent_result
 
-    result = process_intent(transaction, order_ref)
-    return PaymentCreateIntentResponse(**result)
+    try:
+        result = process_intent(transaction, order_ref)
+        return PaymentCreateIntentResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        raise HTTPException(status_code=400, detail=traceback.format_exc())
 
 
 @router.post("/webhook")
