@@ -35,8 +35,64 @@ class PaymentService:
             
         # Iyzico signature logic is typically x-iyz-signature 
         # but let's assume a standard HMAC SHA256 for the wrapper contract.
-        # expected_sig = base64.b64encode(hmac.new(self.secret_key.encode(), payload_body.encode(), hashlib.sha256).digest()).decode()
         # return hmac.compare_digest(expected_sig, signature_header)
         return False
+        
+    def enqueue_pdf_generation_task(self, order_id: str, tracking_code: str = None) -> None:
+        """
+        Enqueues a PDF generation task to Google Cloud Tasks for async processing.
+        Local/Test environments just skip the actual GCP API call but log the action.
+        """
+        if settings.ENV in ["local", "development", "test"]:
+            from app.core.logging import logger
+            logger.info(f"Local ENV: Mock enqueueing PDF task for Order {order_id}")
+            return
+            
+        try:
+            from google.cloud import tasks_v2
+            import json
+            import uuid
+            
+            client = tasks_v2.CloudTasksClient()
+            
+            # These would ideally be configured in settings for a highly flexible environment
+            project = settings.FIREBASE_PROJECT_ID 
+            location = "europe-west1" # Matches your Cloud Run location usually
+            queue = "ops-pdf-generate"
+            
+            parent = client.queue_path(project, location, queue)
+            
+            url = f"{settings.OPS_AUDIENCE_URL}/api/ops/pdf-generate"
+            
+            job_id = f"pdf_{order_id}_{uuid.uuid4().hex[:8]}"
+            payload = {
+                "job_type": "pdf_generate",
+                "job_id": job_id,
+                "order_id": order_id,
+                "tracking_code": tracking_code,
+                "requested_by": "system:webhook",
+                "attempt": 1
+            }
+            
+            task = {
+                "http_request": {
+                    "http_method": tasks_v2.HttpMethod.POST,
+                    "url": url,
+                    "headers": {"Content-Type": "application/json"},
+                    "body": json.dumps(payload).encode(),
+                    "oidc_token": {
+                        "service_account_email": settings.OPS_SERVICE_ACCOUNT_EMAIL,
+                        "audience": settings.OPS_AUDIENCE_URL,
+                    },
+                }
+            }
+            
+            response = client.create_task(request={"parent": parent, "task": task})
+            from app.core.logging import logger
+            logger.info(f"Successfully enqueued Cloud Task {response.name} for Order {order_id}")
+        except Exception as e:
+            from app.core.logging import logger
+            logger.error(f"Failed to enqueue Cloud Task for order {order_id}: {str(e)}")
+            # In production, we might want to alert Sentry here
 
 payment_service = PaymentService()

@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     IYZICO_SECRET_KEY: str = "mock_secret_key"
     IYZICO_BASE_URL: str = "https://sandbox-api.iyzipay.com"
 
+    # Background Jobs / OPS Security Configs
+    OPS_AUDIENCE_URL: str = "https://mock-ops-url.run.app"
+    OPS_SERVICE_ACCOUNT_EMAIL: str = "ops-service-account@emektup.iam.gserviceaccount.com"
+    
     @property
     def get_allowed_origins(self) -> list[str]:
         try:

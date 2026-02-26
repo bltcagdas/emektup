@@ -186,6 +186,19 @@ def payment_webhook(
             })
 
     process_webhook(transaction, payment_ref)
+    
+    # 4. Enqueue background job (Fire and Forget)
+    if provider_status.upper() == "SUCCESS":
+       try:
+           # Get the tracking code from order (we need outside transaction to be safe or fetch again)
+           order_doc_raw = db.collection(ORDERS).document(order_id).get()
+           if order_doc_raw.exists:
+               tracking = order_doc_raw.to_dict().get("tracking_code")
+               payment_service.enqueue_pdf_generation_task(order_id=order_id, tracking_code=tracking)
+       except Exception as e:
+           # Do not fail the webhook just because the enqueue failed
+           from app.core.logging import logger
+           logger.error(f"Post-webhook task enqueue failed: {str(e)}")
     return {"message": "Webhook processed successfully"}
 
 

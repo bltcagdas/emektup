@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import health, orders, admin, payments
+from app.api.routes import health, orders, admin, payments, ops
 from app.core.config import settings
 from app.db.firestore import init_firebase
 from app.core.logging import RequestIdMiddleware, logger
@@ -32,6 +32,7 @@ app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(orders.router, prefix="/api/orders", tags=["orders"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(payments.router, prefix="/api/payments", tags=["payments"])
+app.include_router(ops.router, prefix="/api/ops", tags=["ops"])
 
 @app.get("/")
 def root():

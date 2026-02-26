@@ -4,8 +4,14 @@ from typing import Callable, Awaitable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# Configure basic structured JSON logging format later,
-# but for now, we ensure request_id is present.
+# We inject request_id safely using a filter mechanism below,
+# but for now, we ensure request_id is present if not set by context.
+
+class InjectRequestId(logging.Filter):
+    def filter(self, record):
+        if not hasattr(record, "request_id"):
+            record.request_id = "system"
+        return True
 
 logger = logging.getLogger("emektup")
 logger.setLevel(logging.INFO)
@@ -13,6 +19,7 @@ handler = logging.StreamHandler()
 formatter = logging.Formatter('{"time": "%(asctime)s", "level": "%(levelname)s", "request_id": "%(request_id)s", "message": "%(message)s"}')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+logger.addFilter(InjectRequestId())
 
 class RequestIdFilter(logging.Filter):
     def __init__(self, request_id: str):
