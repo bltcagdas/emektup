@@ -83,7 +83,19 @@ class PaymentService:
         }
         
         checkout_form_initialize = iyzipay.CheckoutFormInitialize().create(request, options)
-        result = checkout_form_initialize.read()
+        
+        import json
+        
+        # Handle different iyzipay SDK return signatures
+        if hasattr(checkout_form_initialize, 'read'):
+            raw_result = checkout_form_initialize.read()
+        else:
+            raw_result = checkout_form_initialize
+            
+        if isinstance(raw_result, (bytes, str)):
+            result = json.loads(raw_result)
+        else:
+            result = raw_result
         
         if result.get('status') == 'success':
             return {
