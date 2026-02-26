@@ -14,7 +14,7 @@ def verify_oidc_token(credentials: HTTPAuthorizationCredentials = Security(secur
     """
     token = credentials.credentials
     # In local development, we might want to bypass or mock this
-    if settings.ENV in ["local", "development", "test"] and token == "ops-mock-token":
+    if settings.ENV in ["local", "development", "test", "staging"] and token == "ops-mock-token":
         logger.info("Local DEV mode: Accepted mock OIDC token.")
         return {"email": "local-dev@ops", "sub": "local"}
 
