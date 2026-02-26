@@ -15,7 +15,7 @@ WORKDIR /app
 #     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies first (caching layer)
-COPY pyproject.toml README.md ./
+COPY pyproject.toml ./
 RUN pip install --no-cache-dir -e .
 
 # Copy application source code

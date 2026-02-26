@@ -52,8 +52,8 @@ jobs:
         with:
           # REPLACE _YOUR_PROJECT_NUMBER_ BqweELOW with the output of: 
           # gcloud projects describe emektup-staging --format="value(projectNumber)"
-          workload_identity_provider: 'projects/393070663679/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'cloudrun-deployer@emektup-staging.iam.gserviceaccount.com'
+          workload_identity_provider: projects/393070663679/locations/global/workloadIdentityPools/github-identity-pool/providers/github-provider
+          service_account: cloudrun-deployer@emektup-staging.iam.gserviceaccount.com
 
       - name: Docker Auth
         id: docker-auth
