@@ -58,13 +58,13 @@ class PaymentService:
         }
         
         request = {
-            'locale': iyzipay.LOCALE_TR,
+            'locale': "tr",
             'conversationId': order_id,
             'price': str(amount),
             'paidPrice': str(amount),
-            'currency': iyzipay.CURRENCY_TRY,
+            'currency': "TRY",
             'basketId': order_id,
-            'paymentGroup': iyzipay.PAYMENT_GROUP_PRODUCT,
+            'paymentGroup': "PRODUCT",
             'callbackUrl': callback_url,
             'enabledInstallments': ['2', '3', '6', '9'],
             'buyer': buyer,
@@ -75,7 +75,7 @@ class PaymentService:
                     'id': f"ITEM-{order_id}",
                     'name': "Cezaevi Mektup Gönderimi",
                     'category1': "Hizmet",
-                    'itemType': iyzipay.BASKET_ITEM_TYPE_PHYSICAL,
+                    'itemType': "PHYSICAL",
                     'price': str(amount)
                 }
             ]
