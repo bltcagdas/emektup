@@ -20,17 +20,11 @@ class Settings(BaseSettings):
     OPS_SERVICE_ACCOUNT_EMAIL: str = "ops-service-account@emektup.iam.gserviceaccount.com"
     
     @property
-    def get_allowed_origins(self) -> list[str]:
-        # Provide a robust parser for environments that strip or inject unexpected quotes
-        cleaned = self.ALLOWED_ORIGINS.strip().strip("'").strip('"')
-        if cleaned.startswith("["):
-            try:
-                import json
-                return json.loads(cleaned.replace("'", '"'))
-            except Exception:
-                pass
-        # Fallback to comma separation
-        return [x.strip() for x in cleaned.split(",")] if cleaned else []
+    def allowed_origins_list(self) -> list[str]:
+        # Foolproof parser: strip all potential outer arrays/quotes and split by comma
+        val = self.ALLOWED_ORIGINS.strip("'").strip('"').strip()
+        val = val.strip("[]")
+        return [x.strip().strip("'").strip('"') for x in val.split(",") if x.strip()]
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
