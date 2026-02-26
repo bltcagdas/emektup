@@ -107,7 +107,7 @@ jobs:
             IYZICO_ENV=sandbox
             FIREBASE_PROJECT_ID=${{ env.PROJECT_ID }}
             IYZICO_BASE_URL=https://sandbox-api.iyzipay.com
-            ALLOWED_ORIGINS=["http://localhost:5173", "http://localhost:3000"]
+            ALLOWED_ORIGINS='["http://localhost:5173", "http://localhost:3000"]'
 
       - name: Smoke Test Staging Endpoint
         run: |
