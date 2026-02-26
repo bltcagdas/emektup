@@ -11,10 +11,13 @@ def poll():
     while True:
         try:
             r = httpx.post(URL, json=PAYLOAD, headers=HEADERS, timeout=12.0)
-            if r.status_code != 500:
-                print(f"\nDEPLOYED! Status: {r.status_code}")
+            if r.status_code == 200:
+                print(f"\nSUCCESS! Status: {r.status_code}")
                 print(f"Body: {r.text}")
                 break
+            elif r.status_code == 429:
+                print("\nRate limited. Waiting 60s...")
+                time.sleep(60)
             else:
                 print(".", end="", flush=True)
                 time.sleep(10)

@@ -203,7 +203,7 @@ def payment_webhook(
                if order_doc_raw.exists:
                    tracking = order_doc_raw.to_dict().get("tracking_code")
                    bg_tasks.add_task(payment_service.enqueue_pdf_generation_task, order_id=order_id, tracking_code=tracking)
-           except Exception as e:
+           except Exception:
                pass
         return {"message": "Webhook processed successfully"}
     except HTTPException:
