@@ -3,7 +3,7 @@ name: Deploy Staging to Cloud Run
 on:
   push:
     branches:
-      - staging  # Adjust depending on git branching strategy
+      - main  # Adjust depending on git branching strategy
   workflow_dispatch:
 
 env:
@@ -52,7 +52,7 @@ jobs:
         with:
           # REPLACE _YOUR_PROJECT_NUMBER_ BqweELOW with the output of: 
           # gcloud projects describe emektup-staging --format="value(projectNumber)"
-          workload_identity_provider: projects/393070663679/locations/global/workloadIdentityPools/github-identity-pool/providers/github-provider
+          workload_identity_provider: projects/393070663679/locations/global/workloadIdentityPools/github-pool/providers/github-provider
           service_account: cloudrun-deployer@emektup-staging.iam.gserviceaccount.com
 
       - name: Docker Auth
