@@ -54,6 +54,7 @@ jobs:
           # gcloud projects describe emektup-staging --format="value(projectNumber)"
           workload_identity_provider: projects/393070663679/locations/global/workloadIdentityPools/github-pool/providers/github-provider
           service_account: cloudrun-deployer@emektup-staging.iam.gserviceaccount.com
+          token_format: 'access_token'
 
       - name: Docker Auth
         id: docker-auth
