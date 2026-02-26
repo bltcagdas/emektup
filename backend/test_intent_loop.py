@@ -1,6 +1,6 @@
 import httpx
 import time
-import sys
+# import sys
 
 URL = 'https://emektup-api-staging-393070663679.europe-west1.run.app/api/payments/create-intent'
 PAYLOAD = {'order_id': '7XiTlh4ILPL1NBYioLyK'}

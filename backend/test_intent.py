@@ -1,5 +1,5 @@
 import httpx
-import sys
+# import sys
 
 try:
     print("Sending POST request to Staging...", flush=True)
