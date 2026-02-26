@@ -21,10 +21,11 @@ class PaymentService:
             
         import iyzipay
         
+        base_url_cleaned = self.base_url.replace("https://", "").replace("http://", "").rstrip("/")
         options = {
             'api_key': self.api_key,
             'secret_key': self.secret_key,
-            'base_url': self.base_url
+            'base_url': base_url_cleaned
         }
         
         # Determine the return URL for the frontend callback.
