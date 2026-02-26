@@ -1,5 +1,4 @@
-from typing import Dict, List, Optional
-from pydantic import BaseModel
+from typing import Dict, List
 
 # Fixed Production Status Set for v0.1
 class OrderStatus:

@@ -29,7 +29,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             email=decoded_token.get("email"),
             claims=decoded_token
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",

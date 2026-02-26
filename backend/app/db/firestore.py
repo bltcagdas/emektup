@@ -25,7 +25,7 @@ def init_firebase():
             print("Firebase Admin SDK initialized successfully via local JSON file.")
         else:
             # Fallback for Cloud Run ADC emulator or default credentials
-            print(f"Warning: Firebase service account key not found. Initializing with application default credentials.")
+            print("Warning: Firebase service account key not found. Initializing with application default credentials.")
             firebase_admin.initialize_app(options={'projectId': settings.FIREBASE_PROJECT_ID})
 
 def get_db():

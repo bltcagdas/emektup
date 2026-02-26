@@ -1,11 +1,10 @@
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import health, orders, admin, payments
 from app.core.config import settings
 from app.db.firestore import init_firebase
 from app.core.logging import RequestIdMiddleware, logger
-from app.core.rate_limit import setup_rate_limiting, limiter
-from app.api.deps import get_current_user, require_admin
+from app.core.rate_limit import setup_rate_limiting
 
 app = FastAPI(title=settings.PROJECT_NAME)
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException, status, Header
+from fastapi import APIRouter, Request, HTTPException, Header
 from app.api.schemas import PaymentCreateIntentRequest, PaymentCreateIntentResponse, PaymentWebhookPayload, PaymentStatusResponse
 from app.core.rate_limit import limiter
 from app.services.payment_service import payment_service

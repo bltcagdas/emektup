@@ -1,10 +1,5 @@
-import hmac
-import hashlib
-import base64
-import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from app.core.config import settings
-from fastapi import HTTPException
 
 class PaymentService:
     def __init__(self):
