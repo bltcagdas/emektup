@@ -32,7 +32,7 @@ export default function PaymentReturn() {
         enabled: !!orderDetails?.order_id,
         refetchInterval: (query) => {
             // Stop polling if PAID or FAILED
-            if (query.state.data?.status === "PAID" || query.state.data?.status === "FAILED") {
+            if (query.state.data?.payment_status === "PAID" || query.state.data?.payment_status === "FAILED") {
                 return false;
             }
             return 4000; // Poll every 4s to prevent 429 Too Many Requests
@@ -48,7 +48,7 @@ export default function PaymentReturn() {
         );
     }
 
-    const status = data?.status || "PENDING";
+    const status = data?.payment_status || "PENDING";
 
     return (
         <div className="max-w-md mx-auto p-4 py-12 text-center">
