@@ -1,6 +1,6 @@
 import httpx
 import time
-import sys
+# import sys
 
 def trigger_webhook():
     print("Polling Webhook until deployment is live...")
