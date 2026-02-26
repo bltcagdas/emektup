@@ -83,7 +83,7 @@ def create_payment_intent(request: Request, payload: PaymentCreateIntentRequest)
         return PaymentCreateIntentResponse(**result)
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         import traceback
         raise HTTPException(status_code=400, detail=traceback.format_exc())
 
