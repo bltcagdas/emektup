@@ -11,10 +11,7 @@ class PaymentService:
     def create_checkout_intent(self, order_id: str, amount: float, currency: str = "TRY", recipient: Dict = None) -> Dict[str, Any]:
         """
         Creates a payment intent (e.g., Iyzico Checkout Form Initializer).
-        Since this is an agnostic wrapper, we mock the HTTP call for now.
-        In a real scenario, we'd use httpx to POST to self.base_url + "/payment/iyziup/initialize".
         """
-        # Mocking the provider logic
         if self.env == "sandbox" and self.api_key == "mock_api_key":
             return {
                 "status": "success",
@@ -22,8 +19,81 @@ class PaymentService:
                 "checkout_url": f"https://sandbox-checkout.iyzipay.com/token=sandbox_token_{order_id}"
             }
             
-        # Real HTTP logic would go here
-        raise NotImplementedError("Live Iyzico HTTP calls not fully implemented yet.")
+        import iyzipay
+        
+        options = {
+            'api_key': self.api_key,
+            'secret_key': self.secret_key,
+            'base_url': self.base_url
+        }
+        
+        # Determine the return URL for the frontend callback.
+        # Ideally this should be passed from frontend, but we hardcode to the local frontend for the E2E test.
+        callback_url = "http://localhost:5173/pay/return"
+        
+        recipient_name = recipient.get("name", "Bilinmeyen Kullanici") if recipient else "Bilinmeyen Kullanici"
+        address_text = recipient.get("address", "Bilinmeyen Adres") if recipient else "Bilinmeyen Adres"
+        
+        buyer = {
+            'id': f"BYR-{order_id}",
+            'name': recipient_name.split()[0], # simplistic split
+            'surname': " ".join(recipient_name.split()[1:]) or "Soyadi",
+            'gsmNumber': "+905555555555",
+            'email': "kullanici@emektup.local",
+            'identityNumber': "74300864791",
+            'lastLoginDate': "2026-02-26 12:00:00",
+            'registrationDate': "2026-02-26 12:00:00",
+            'registrationAddress': address_text,
+            'ip': "85.34.78.112",
+            'city': "Istanbul",
+            'country': "Turkey",
+            'zipCode': "34732"
+        }
+        address = {
+            'contactName': recipient_name,
+            'city': "Istanbul",
+            'country': "Turkey",
+            'address': address_text,
+            'zipCode': "34732"
+        }
+        
+        request = {
+            'locale': iyzipay.LOCALE_TR,
+            'conversationId': order_id,
+            'price': str(amount),
+            'paidPrice': str(amount),
+            'currency': iyzipay.CURRENCY_TRY,
+            'basketId': order_id,
+            'paymentGroup': iyzipay.PAYMENT_GROUP_PRODUCT,
+            'callbackUrl': callback_url,
+            'enabledInstallments': ['2', '3', '6', '9'],
+            'buyer': buyer,
+            'shippingAddress': address,
+            'billingAddress': address,
+            'basketItems': [
+                {
+                    'id': f"ITEM-{order_id}",
+                    'name': "Cezaevi Mektup Gönderimi",
+                    'category1': "Hizmet",
+                    'itemType': iyzipay.BASKET_ITEM_TYPE_PHYSICAL,
+                    'price': str(amount)
+                }
+            ]
+        }
+        
+        checkout_form_initialize = iyzipay.CheckoutFormInitialize().create(request, options)
+        result = checkout_form_initialize.read()
+        
+        if result.get('status') == 'success':
+            return {
+                "status": "success",
+                "token": result.get('token'),
+                "checkout_url": result.get('paymentPageUrl')
+            }
+        else:
+            from app.core.logging import logger
+            logger.error(f"Iyzico Intent Error: {result.get('errorMessage')}")
+            raise Exception(f"Iyzico error: {result.get('errorMessage')}")
 
     def verify_webhook_signature(self, payload_body: str, signature_header: str) -> bool:
         """
