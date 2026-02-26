@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from app.api.schemas_ops import PdfGenerateJobPayload, PiiCleanupJobPayload, OpsJobResponse
 from app.api.deps_ops import verify_oidc_token
 from app.db.firestore import get_db

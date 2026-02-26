@@ -1,9 +1,7 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
-from app.db.firestore import get_db
 from app.db.collections import ORDERS
-from firebase_admin import firestore
 from unittest.mock import patch
 from app.core.config import settings
 import mockfirestore
