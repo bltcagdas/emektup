@@ -13,9 +13,11 @@ def verify_oidc_token(credentials: HTTPAuthorizationCredentials = Security(secur
     It expects a valid Google OIDC token in the Authorization header.
     """
     token = credentials.credentials
-    # In local development, we might want to bypass or mock this
-    if settings.ENV in ["local", "development", "test", "staging"] and token == "ops-mock-token":
-        logger.info("Local DEV mode: Accepted mock OIDC token.")
+    # In local/staging, we allow a mock token for E2E testing — NEVER in production
+    if settings.ENV == "production":
+        pass  # Hard-block: skip mock bypass entirely in production
+    elif settings.ENV in ["local", "development", "test", "staging"] and token == "ops-mock-token":
+        logger.warning(f"MOCK OPS TOKEN used in {settings.ENV}")
         return {"email": "local-dev@ops", "sub": "local"}
 
     audience = settings.OPS_AUDIENCE_URL # e.g. https://emektup-api-staging-xxxxxxxx-ew.a.run.app

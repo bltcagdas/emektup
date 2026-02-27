@@ -74,9 +74,10 @@ def ops_pdf_generate(payload: PdfGenerateJobPayload, claims: dict = Depends(veri
     # 2. Actually Generate PDF (Outside transaction to not hold locks during slow I/O)
     logger.info(f"Producing letter PDF for Order: {payload.order_id}")
     try:
-        # Staging-only controlled failure for E2E testing (N7)
+        # Staging-only controlled failure for E2E testing (N7) — NEVER in production
         from app.core.config import settings
-        if settings.ENV in ["staging", "test"] and payload.job_id.startswith("FAIL_TEST_"):
+        if settings.ENV != "production" and settings.ENV in ["staging", "test"] and payload.job_id.startswith("FAIL_TEST_"):
+            logger.warning(f"CONTROLLED FAIL TRIGGER in {settings.ENV}: {payload.job_id}")
             raise Exception(f"Controlled E2E test failure for job {payload.job_id}")
         
         # TODO: integrate with real PDF service when available (ReportLab / Playwright etc)

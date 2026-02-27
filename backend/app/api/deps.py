@@ -23,9 +23,13 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     """
     token = credentials.credentials
     
-    # Staging/dev mock bypass for E2E testing
+    # Staging/dev mock bypass for E2E testing — NEVER in production
     from app.core.config import settings
-    if settings.ENV in ["local", "development", "test", "staging"] and token == "admin-mock-token":
+    if settings.ENV == "production":
+        pass  # Hard-block: skip mock bypass entirely in production
+    elif settings.ENV in ["local", "development", "test", "staging"] and token == "admin-mock-token":
+        import logging
+        logging.getLogger(__name__).warning(f"MOCK ADMIN AUTH used in {settings.ENV}")
         return UserRecord(
             uid="mock-admin-uid",
             email="admin@emektup.test",
