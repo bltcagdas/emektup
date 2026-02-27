@@ -22,6 +22,16 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     Raises 401 on invalid/missing token.
     """
     token = credentials.credentials
+    
+    # Staging/dev mock bypass for E2E testing
+    from app.core.config import settings
+    if settings.ENV in ["local", "development", "test", "staging"] and token == "admin-mock-token":
+        return UserRecord(
+            uid="mock-admin-uid",
+            email="admin@emektup.test",
+            claims={"uid": "mock-admin-uid", "email": "admin@emektup.test", "admin": True}
+        )
+    
     try:
         decoded_token = auth.verify_id_token(token)
         return UserRecord(
