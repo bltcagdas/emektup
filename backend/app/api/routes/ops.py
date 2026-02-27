@@ -133,16 +133,48 @@ def ops_pii_cleanup(payload: PiiCleanupJobPayload, claims: dict = Depends(verify
             return OpsJobResponse(message=f"Dry run success. Est records: {simulate_count}", status="SUCCEEDED", job_id=payload.job_id)
             
         else:
-            # Stub for real PII cleanup execution
-            # Real code would involve firestore batched writes doing `firestore.DELETE_FIELD` on sensitive paths
+            # Real PII cleanup: anonymize eligible orders
+            from datetime import datetime, timedelta, timezone
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=payload.cutoff_days)
+            
+            # Query eligible orders: SHIPPED or CANCELLED, created before cutoff
+            eligible_statuses = ["SHIPPED", "CANCELLED"]
+            cleaned_count = 0
+            cleaned_order_ids = []
+            
+            for eligible_status in eligible_statuses:
+                query = (db.collection(ORDERS)
+                    .where("status", "==", eligible_status)
+                    .where("created_at", "<", cutoff_date)
+                    .limit(100))
+                
+                for doc in query.stream():
+                    order_data = doc.to_dict()
+                    # Only clean if PII fields still exist (idempotency)
+                    if order_data.get("recipient") or order_data.get("letter_content"):
+                        doc.reference.update({
+                            "recipient": firestore.DELETE_FIELD,
+                            "letter_content": firestore.DELETE_FIELD,
+                            "notes": firestore.DELETE_FIELD,
+                            "pii_cleaned_at": firestore.SERVER_TIMESTAMP
+                        })
+                        cleaned_count += 1
+                        cleaned_order_ids.append(doc.id)
+            
+            # Write audit log
             audit_ref = db.collection(ADMIN_AUDIT_LOGS).document()
             audit_ref.set({
                 "action": "PII_CLEANUP",
                 "actor": "system:scheduler",
                 "job_id": payload.job_id,
+                "cleaned_count": cleaned_count,
+                "cleaned_order_ids": cleaned_order_ids[:20],  # cap for audit size
+                "cutoff_days": payload.cutoff_days,
                 "timestamp": firestore.SERVER_TIMESTAMP
             })
-            return OpsJobResponse(message="PII swept from records.", status="SUCCEEDED", job_id=payload.job_id)
+            
+            logger.info(f"PII Cleanup: anonymized {cleaned_count} orders")
+            return OpsJobResponse(message=f"PII cleaned from {cleaned_count} records.", status="SUCCEEDED", job_id=payload.job_id)
             
     except Exception as e:
         logger.error(f"Cron PII Cleanup failed: {str(e)}")
