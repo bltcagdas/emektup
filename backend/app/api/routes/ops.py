@@ -150,9 +150,15 @@ def ops_pii_cleanup(payload: PiiCleanupJobPayload, claims: dict = Depends(verify
                 for doc in query.stream():
                     order_data = doc.to_dict()
                     # Filter by cutoff date in Python (avoids composite index)
-                    created_at = order_data.get("created_at")
-                    if created_at and hasattr(created_at, 'timestamp') and created_at > cutoff_date:
-                        continue  # Not old enough
+                    if payload.cutoff_days > 0:
+                        created_at = order_data.get("created_at")
+                        if created_at:
+                            # Firestore timestamps have a .replace method (they're datetime-like)
+                            try:
+                                if created_at > cutoff_date:
+                                    continue  # Not old enough
+                            except TypeError:
+                                pass  # If comparison fails, include the record
                     # Only clean if PII fields still exist (idempotency)
                     if order_data.get("recipient") or order_data.get("letter_content"):
                         doc.reference.update({
