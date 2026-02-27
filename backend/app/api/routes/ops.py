@@ -74,6 +74,11 @@ def ops_pdf_generate(payload: PdfGenerateJobPayload, claims: dict = Depends(veri
     # 2. Actually Generate PDF (Outside transaction to not hold locks during slow I/O)
     logger.info(f"Producing letter PDF for Order: {payload.order_id}")
     try:
+        # Staging-only controlled failure for E2E testing (N7)
+        from app.core.config import settings
+        if settings.ENV in ["staging", "test"] and payload.job_id.startswith("FAIL_TEST_"):
+            raise Exception(f"Controlled E2E test failure for job {payload.job_id}")
+        
         # TODO: integrate with real PDF service when available (ReportLab / Playwright etc)
         mock_pdf_gs_path = f"gs://emektup-sandbox/orders/{payload.order_id}/generated/letter.pdf"
         
